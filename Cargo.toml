@@ -1,5 +1,5 @@
 [package]
-name = "sonda"
+name = "sonda-cli"
 version = "0.1.0"
 edition = "2021"
 description = "PC hardware, OS, and driver scanner CLI: one scan, structured JSON (contract v1)"
@@ -10,6 +10,12 @@ readme = "README.md"
 keywords = ["cli", "hardware", "drivers", "diagnostics", "inventory"]
 categories = ["command-line-utilities", "os", "hardware-support"]
 exclude = ["odd", ".github", ".serena", ".codegraph", ".atl"]
+
+# crates.io package is `sonda-cli` (the plain `sonda` name is taken); the
+# installed binary keeps the family-short name.
+[[bin]]
+name = "sonda"
+path = "src/main.rs"
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }

@@ -19,7 +19,8 @@ Kernel: 6.12.107+deb13-amd64 · x86_64 · 4 cores / 8 threads · NVMe KIOXIA 256
 ## Install
 
 ```console
-$ cargo install --path .
+$ cargo install sonda-cli    # from crates.io (installs the `sonda` binary)
+$ cargo install --path .     # from a local clone
 ```
 
 Rust 1.74+ (edition 2021). Dependencies: `clap`, `serde`, `serde_json` —
