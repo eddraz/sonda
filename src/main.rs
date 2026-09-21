@@ -5,6 +5,7 @@ mod model;
 mod probe;
 mod run;
 mod shell;
+mod summary;
 mod timefmt;
 
 use std::io::{self, Write};
@@ -16,11 +17,18 @@ fn main() -> ExitCode {
     let args = cli::Cli::parse();
 
     if args.summary {
-        eprintln!("sonda: --summary not implemented yet");
-        return ExitCode::from(2);
+        return print_summary(&run::run_scan());
     }
 
     serialize(run::run_scan(), args.compact)
+}
+
+fn print_summary(output: &model::Output) -> ExitCode {
+    let stdout = io::stdout();
+    let mut lock = stdout.lock();
+    let _ = writeln!(lock, "{}", summary::render(output));
+    let _ = lock.flush();
+    ExitCode::SUCCESS
 }
 
 fn serialize(output: model::Output, compact: bool) -> ExitCode {
