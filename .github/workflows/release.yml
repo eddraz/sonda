@@ -70,3 +70,5 @@ jobs:
         with:
           # `with:` only expands ${{ }} expressions, never $VAR shell env.
           files: sonda-${{ env.VERSION }}-${{ matrix.target }}.tar.gz
+          # On workflow_dispatch GITHUB_REF_NAME is the branch, not the tag.
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
