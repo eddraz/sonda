@@ -7,6 +7,12 @@
 //! the scan.
 
 pub(crate) mod core;
+pub(crate) mod dmi;
+pub(crate) mod net;
+pub(crate) mod pci;
+pub(crate) mod rfkill;
+pub(crate) mod storage;
+pub(crate) mod usb;
 
 /// Read a file and return its trimmed contents, or None when unreadable.
 pub(crate) fn read_trim(path: &str) -> Option<String> {
