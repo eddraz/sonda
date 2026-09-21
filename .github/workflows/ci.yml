@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  native:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux
+            os: ubuntu-latest
+          - name: macos
+            os: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Format check
+        run: cargo fmt --check
+
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Tests
+        run: cargo test
+
+      - name: Build (release)
+        run: cargo build --release
+
+      # The scan must complete with valid contract-shaped output on every
+      # platform: on macOS several probes are unavailable (no /proc, BSD
+      # uname without -o, no iproute2) and must degrade to nulls/empty —
+      # structure is asserted, never values.
+      - name: "Smoke: scan exits 0 with contract shape"
+        run: |
+          ./target/release/sonda --compact > scan.json
+          jq -e '.command == "scan"' scan.json
+          jq -e '.generated_at | endswith("Z")' scan.json
+          jq -e '.os | type == "object"' scan.json
+          jq -e '.cpu | type == "object"' scan.json
+          jq -e '.memory | type == "object"' scan.json
+          jq -e '.pci_devices | type == "array"' scan.json
+          jq -e '.usb_devices | type == "array"' scan.json
+          jq -e '.storage | type == "array"' scan.json
+          jq -e '.network_links | type == "array"' scan.json
+          jq -e '.rfkill_devices | type == "array"' scan.json
+          jq -e '.dmi.available == false or .dmi.available == true' scan.json
+          jq -e '.errors | type == "array"' scan.json
+          echo "kernel: $(jq -c '.os.kernel' scan.json) · pci: $(jq '.pci_devices | length' scan.json) · errors: $(jq '.errors | length' scan.json)"
