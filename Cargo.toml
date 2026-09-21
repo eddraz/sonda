@@ -1,0 +1,21 @@
+[package]
+name = "sonda"
+version = "0.1.0"
+edition = "2021"
+description = "PC hardware, OS, and driver scanner CLI: one scan, structured JSON (contract v1)"
+license = "MIT"
+repository = "https://github.com/eddraz/sonda"
+homepage = "https://github.com/eddraz/sonda"
+readme = "README.md"
+keywords = ["cli", "hardware", "drivers", "diagnostics", "inventory"]
+categories = ["command-line-utilities", "os", "hardware-support"]
+exclude = ["odd", ".github", ".serena", ".codegraph", ".atl"]
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+lto = true
+strip = true
