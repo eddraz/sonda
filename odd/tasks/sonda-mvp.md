@@ -168,6 +168,15 @@ gracefully when a section is missing.
   precedent: inline implementation via serena MCP file tools (native
   write/edit blocked by the ODD multi-file guard); commits stayed with the
   parent. Merge/push and release remain user decisions.
+- Release v0.1.0: PR #2 merged (ff, master aadf61b), tag v0.1.0 verified
+  against origin/master, crates.io published as sonda-cli 0.1.0 (plain
+  `sonda` was taken by davidban77; binary stays `sonda` via [[bin]]).
+  GitHub release needed three workflow fixes: (1) `with:` does not expand
+  shell $VAR — use ${{ env.VERSION }}; (2) workflow_dispatch + exact tag
+  input per release skill; (3) explicit tag_name because GITHUB_REF_NAME is
+  the branch on dispatch. Final: 4 target tarballs on the release.
+  NOTE: pkgq/release.yml has the same latent $VERSION glob bug — its
+  releases likely shipped without assets; fix there separately.
 - Review preflight (RDD on): inspect OK; native START blocked — review/start
   returns schema-incompatible for the base-diff committedOnly candidate with
   consent=relay (three valid baseRef spellings tried: ref name, full commit
