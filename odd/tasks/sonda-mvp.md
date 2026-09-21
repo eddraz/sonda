@@ -168,3 +168,9 @@ gracefully when a section is missing.
   precedent: inline implementation via serena MCP file tools (native
   write/edit blocked by the ODD multi-file guard); commits stayed with the
   parent. Merge/push and release remain user decisions.
+- Review preflight (RDD on): inspect OK; native START blocked — review/start
+  returns schema-incompatible for the base-diff committedOnly candidate with
+  consent=relay (three valid baseRef spellings tried: ref name, full commit
+  id; tree id rejected facade-side as unresolvable). lineage_created=false,
+  no mutation. Review pending infra fix, not declined; delivery stays a user
+  decision (all work is local commits on feature/sonda-mvp).
