@@ -1,6 +1,6 @@
 [package]
 name = "sonda-cli"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "PC hardware, OS, and driver scanner CLI: one scan, structured JSON (contract v1)"
 license = "MIT"
