@@ -115,8 +115,8 @@ pub struct RfkillDevice {
     pub hard_blocked: Option<bool>,
 }
 
-/// DMI/board data from `dmidecode`. Requires root; null without it.
-#[derive(Debug, Clone, Serialize)]
+/// DMI/board data from sysfs or `dmidecode`. Requires root; null without it.
+#[derive(Debug, Clone, Default, Serialize)]
 pub struct Dmi {
     /// True when dmidecode ran successfully and values are populated.
     pub available: bool,

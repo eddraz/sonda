@@ -109,7 +109,7 @@ rows):
 | `storage` | array | `lsblk` rows of `type: disk` only (includes zram devices). |
 | `network_links` | array | `ip -br link` interfaces, loopback included. |
 | `rfkill_devices` | array | rfkill blocks; empty when `rfkill` is not installed. |
-| `dmi` | object | Board/BIOS data; nulls without root. |
+| `dmi` | object | Board/BIOS data from `/sys/class/dmi/id` (sysfs) or `dmidecode`. |
 | `errors` | array | Probe failures only — never missing-binary skips. |
 
 ## Nullability policy
@@ -119,7 +119,7 @@ rows):
 | Probe binary not installed (e.g. no `rfkill`) | Section skipped silently: empty array / null fields, **no** `errors[]` entry. |
 | Probe binary present but the command fails | `errors[]` entry `{"probe": ..., "message": ...}`; fields stay null/empty. |
 | Value absent on an otherwise healthy system | `null` field (e.g. `driver_in_use` with no driver bound). |
-| `dmidecode` without root | `dmi.available = false` and all `dmi` fields `null`. Run `sudo sonda` to fill them. |
+| DMI unavailable (no sysfs, dmidecode without root) | `dmi.available = false` and all `dmi` fields `null`. Read from sysfs unprivileged or run `sudo sonda`. |
 
 ## Field semantics worth knowing
 
