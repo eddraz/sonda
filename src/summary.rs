@@ -11,14 +11,24 @@
 use crate::model::{Output, PciDevice};
 
 pub fn render(out: &Output) -> String {
-    let gpu = out.pci_devices.iter().find(|d| d.category == "gpu");
+    let gpus: Vec<&PciDevice> = out
+        .pci_devices
+        .iter()
+        .filter(|d| d.category == "gpu")
+        .collect();
     let wifi = out.pci_devices.iter().find(|d| d.category == "wireless");
-    [
-        device_line("GPU", gpu, true, out),
-        device_line("WiFi", wifi, false, out),
-        kernel_line(out),
-    ]
-    .join("\n")
+
+    let mut lines = Vec::new();
+    if gpus.is_empty() {
+        lines.push(device_line("GPU", None, true, out));
+    } else {
+        for gpu in &gpus {
+            lines.push(device_line("GPU", Some(gpu), true, out));
+        }
+    }
+    lines.push(device_line("WiFi", wifi, false, out));
+    lines.push(kernel_line(out));
+    lines.join("\n")
 }
 
 fn device_line(label: &str, dev: Option<&PciDevice>, allow_igpu: bool, out: &Output) -> String {
@@ -27,8 +37,15 @@ fn device_line(label: &str, dev: Option<&PciDevice>, allow_igpu: bool, out: &Out
     };
     let vendor = vendor_short(&dev.vendor);
     let name = device_short(&dev.vendor, &dev.device);
+    let gpu_count = out
+        .pci_devices
+        .iter()
+        .filter(|d| d.category == "gpu")
+        .count();
     let igpu = if allow_igpu && is_igpu(&dev.vendor, out) {
         " (iGPU)"
+    } else if allow_igpu && gpu_count > 1 {
+        " (dGPU)"
     } else {
         ""
     };
@@ -300,5 +317,22 @@ mod tests {
         assert_eq!(vendor_short("Realtek Semiconductor Co., Ltd."), "Realtek");
         assert_eq!(vendor_short("Intel Corporation"), "Intel");
         assert_eq!(vendor_short("Mystery Chips Inc."), "Mystery");
+    }
+
+    #[test]
+    fn renders_multi_gpu_lines() {
+        let mut out = fixture();
+        out.pci_devices.push(PciDevice {
+            slot: "01:00.0".into(),
+            class: "VGA compatible controller".into(),
+            vendor: "NVIDIA Corporation".into(),
+            device: "GA106M [GeForce RTX 3060 Mobile]".into(),
+            driver_in_use: Some("nvidia".into()),
+            modules: vec!["nvidia".into()],
+            category: "gpu".into(),
+        });
+        let rendered = render(&out);
+        assert!(rendered.contains("GPU: AMD Lucienne (iGPU) — driver: amdgpu ✓"));
+        assert!(rendered.contains("GPU: NVIDIA GA106M (dGPU) — driver: nvidia ✓"));
     }
 }
