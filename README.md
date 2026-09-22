@@ -38,6 +38,22 @@ Exit code is 0 on every successful scan, even when individual probes fail:
 failures are recorded in `errors[]`. A missing probe binary (e.g. no `rfkill`
 installed) is skipped silently.
 
+## Updating
+
+```console
+$ sonda update
+```
+
+Compares the running version against the [latest GitHub
+release](https://github.com/eddraz/sonda/releases/latest): downloads the
+tarball for your platform, and atomically replaces the running binary
+(keeping its permissions). Reports the outcome as JSON; `--compact` for a
+single line. Exits 0 on success and on "already up to date"; a fatal failure
+prints an error JSON and exits 1.
+
+Targets: `x86_64-unknown-linux-gnu`, `aarch64-unknown-linux-gnu`,
+`x86_64-apple-darwin`, `aarch64-apple-darwin`.
+
 ## What it probes
 
 | Probe | Source | Needs | If missing |

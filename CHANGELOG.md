@@ -4,6 +4,18 @@ All notable changes to this project are documented in this file. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions
 follow [Semantic Versioning](https://semver.org/).
 
+## [0.2.0] - Unreleased
+
+### Added
+
+- `sonda update`: self-update from the latest GitHub Release. Compares
+  versions, downloads the platform tarball through `bash -c` (curl) and
+  atomically replaces the running binary. JSON report; exits 0 on success
+  and on "already up to date", 1 on fatal errors. `--summary` is rejected
+  with exit 2 when combined with `update`.
+- CLI now accepts optional subcommands without breaking the bare scan:
+  `sonda` (scan), `sonda update`.
+
 ## [0.1.0] - 2026-09-21
 
 ### Added
