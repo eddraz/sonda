@@ -28,13 +28,27 @@ exit 0 on success / "already up to date", FAILURE with error JSON on fatal.
 
 ## Tasks
 
-- [ ] T1: src/update.rs (port from pkgq: target_triple, is_newer, fetch,
-      select_asset, download_and_replace, run_update) + test suite
-- [ ] T2: cli.rs Option<Subcommand> + main.rs dispatch + summary guard +
-      version bump 0.2.0
-- [ ] T3: README (Updating section) + CHANGELOG (0.2.0)
-- [ ] T4: PR (issue-first, type:feature) + CI green
+- [x] T1: src/update.rs (port from pkgq: target_triple, is_newer, fetch,
+      select_asset, download_and_replace, run_update) + test suite — commit 5404cfc
+- [x] T2: cli.rs Option<Subcommand> + main.rs dispatch + summary guard +
+      version bump 0.2.0 — commit 5404cfc
+- [x] T3: README (Updating section) + CHANGELOG (0.2.0) — commit 9f51012
+- [x] T4: PR (issue-first, type:feature) + CI green — PR #8, issue #7,
+      CI linux+macos success on the feature branch
 
 ## Evidence log
 
-- (empty)
+- WU1: commit 5404cfc — 58/58 tests (9 new updater tests), clippy -D
+  warnings, fmt clean; live: sonda update against the real 0.1.0 release →
+  "already up to date", exit 0 (--compact single line verified).
+- WU2: commit 9f51012 — README Updating section, CHANGELOG 0.2.0 (Unreleased
+  until tagged).
+- Incident (minor): initial commits landed on local master (branch creation
+  was skipped); repaired without reset --hard — branch created at the commit,
+  then master ref fast-moved back to origin/master. Safety policy blocked the
+  reset --hard chain; the split plan was the safer equivalent.
+- Note: local master is at origin/master 29116f9; feature branch carries the
+  2 commits. After merge, delete the branch and pull master.
+- Release flow pending user decision after merge: tag v0.2.0 + GitHub
+  release + cargo publish 0.2.0 (this also makes sonda update meaningful:
+  0.1.0 installs will see the newer tag and pull the binary).
