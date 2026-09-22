@@ -119,6 +119,24 @@ pub fn select_asset(release_json: &serde_json::Value, target: &str) -> Option<(S
     None
 }
 
+/// Find a checksum asset (.sha256) matching the target release archive.
+pub fn select_checksum_asset(release_json: &serde_json::Value, target: &str) -> Option<String> {
+    let tag = release_json.get("tag_name")?.as_str()?;
+    let version = strip_v(tag);
+    let expected_name = format!("sonda-{version}-{target}.tar.gz.sha256");
+
+    let assets = release_json.get("assets")?.as_array()?;
+    for asset in assets {
+        let name = asset.get("name")?.as_str()?;
+        if name == expected_name {
+            let url = asset.get("browser_download_url")?.as_str()?;
+            return Some(url.to_string());
+        }
+    }
+
+    None
+}
+
 /// Locate the extracted `sonda` binary inside `dir`.
 fn find_extracted_binary(dir: &Path) -> Option<PathBuf> {
     let entries = fs::read_dir(dir).ok()?;
@@ -157,7 +175,8 @@ fn copy_permissions(_source: &Path, _dest: &Path) -> Result<(), String> {
 }
 
 /// Download the tarball, extract it, and replace the running binary.
-pub fn download_and_replace(url: &str) -> Result<PathBuf, String> {
+/// When `checksum_url` is provided, verifies SHA-256 integrity before extraction.
+pub fn download_and_replace(url: &str, checksum_url: Option<&str>) -> Result<PathBuf, String> {
     let current_exe = std::env::current_exe()
         .map_err(|e| format!("failed to determine current executable path: {e}"))?;
 
@@ -174,12 +193,38 @@ pub fn download_and_replace(url: &str) -> Result<PathBuf, String> {
     shell::run(&format!("curl -fsSL -o {archive_quoted} {url_quoted}"))
         .map_err(|e| format!("failed to download update archive: {e}"))?;
 
+    if let Some(cs_url) = checksum_url {
+        let cs_path = temp_path.join("sonda.tar.gz.sha256");
+        let cs_quoted = shell::quote(cs_path.to_str().unwrap_or("sonda.tar.gz.sha256"));
+        let cs_url_quoted = shell::quote(cs_url);
+        shell::run(&format!("curl -fsSL -o {cs_quoted} {cs_url_quoted}"))
+            .map_err(|e| format!("failed to download checksum: {e}"))?;
+
+        let check_cmd = format!(
+            "set -e; \
+            expected=$(awk '{{print $1}}' {cs_quoted}); \
+            if command -v sha256sum >/dev/null 2>&1; then \
+                actual=$(sha256sum {archive_quoted} | awk '{{print $1}}'); \
+            else \
+                actual=$(shasum -a 256 {archive_quoted} | awk '{{print $1}}'); \
+            fi; \
+            [ \"$actual\" = \"$expected\" ]"
+        );
+        shell::run(&check_cmd)
+            .map_err(|e| format!("checksum verification failed (hash mismatch): {e}"))?;
+    }
+
     let temp_quoted = shell::quote(temp_path.to_str().unwrap_or("/tmp"));
     shell::run(&format!("tar xzf {archive_quoted} -C {temp_quoted}"))
         .map_err(|e| format!("failed to extract update archive: {e}"))?;
 
     let extracted = find_extracted_binary(&temp_path)
         .ok_or("extracted archive does not contain a 'sonda' binary")?;
+
+    // Pre-flight execution check: verify the new binary runs before replacing current.
+    let extracted_quoted = shell::quote(extracted.to_str().unwrap_or("sonda"));
+    shell::run(&format!("{extracted_quoted} --version"))
+        .map_err(|e| format!("downloaded binary failed sanity check (--version): {e}"))?;
 
     let new_path = current_exe.with_extension("new");
     fs::copy(&extracted, &new_path).map_err(|e| map_replace_error(&current_exe, e))?;
@@ -200,6 +245,44 @@ fn map_replace_error(path: &Path, e: std::io::Error) -> String {
     } else {
         format!("cannot replace {}: {e}", path.display())
     }
+}
+
+/// Check if an update is available without downloading or replacing.
+pub fn check_update() -> Result<serde_json::Value, serde_json::Value> {
+    let current_version = env!("CARGO_PKG_VERSION");
+    let target = target_triple();
+
+    let release_json = match fetch_latest_release() {
+        Ok(v) => v,
+        Err(msg) => {
+            return Err(json!({
+                "command": "update",
+                "check_only": true,
+                "error": msg,
+            }));
+        }
+    };
+
+    let latest_version = release_json
+        .get("tag_name")
+        .and_then(|v| v.as_str())
+        .map(strip_v)
+        .unwrap_or("unknown")
+        .to_string();
+
+    let has_update = is_newer(&latest_version, current_version);
+    let asset = select_asset(&release_json, target);
+
+    Ok(json!({
+        "command": "update",
+        "check_only": true,
+        "current_version": current_version,
+        "latest_version": latest_version,
+        "target": target,
+        "has_update": has_update,
+        "asset_available": asset.is_some(),
+        "download_url": asset.map(|(_, url)| url),
+    }))
 }
 
 /// Entry point for the `sonda update` command.
@@ -251,7 +334,9 @@ pub fn run_update() -> Result<serde_json::Value, serde_json::Value> {
         }
     };
 
-    match download_and_replace(&url) {
+    let checksum_url = select_checksum_asset(&release_json, target);
+
+    match download_and_replace(&url, checksum_url.as_deref()) {
         Ok(binary_path) => Ok(json!({
             "command": "update",
             "current_version": current_version,
@@ -363,5 +448,41 @@ mod tests {
         let (version, url) = select_asset(&json, "aarch64-apple-darwin").unwrap();
         assert_eq!(version, "0.3.0");
         assert_eq!(url, "https://example.com/sonda-0.3.0-darwin-arm64.tar.gz");
+    }
+
+    #[test]
+    fn select_checksum_asset_finds_match() {
+        let json = json!({
+            "tag_name": "v0.2.0",
+            "assets": [
+                {
+                    "name": "sonda-0.2.0-x86_64-unknown-linux-gnu.tar.gz",
+                    "browser_download_url": "https://example.com/sonda-0.2.0-linux-x86_64.tar.gz"
+                },
+                {
+                    "name": "sonda-0.2.0-x86_64-unknown-linux-gnu.tar.gz.sha256",
+                    "browser_download_url": "https://example.com/sonda-0.2.0-linux-x86_64.tar.gz.sha256"
+                }
+            ]
+        });
+        let url = select_checksum_asset(&json, "x86_64-unknown-linux-gnu").unwrap();
+        assert_eq!(
+            url,
+            "https://example.com/sonda-0.2.0-linux-x86_64.tar.gz.sha256"
+        );
+    }
+
+    #[test]
+    fn select_checksum_asset_missing() {
+        let json = json!({
+            "tag_name": "v0.2.0",
+            "assets": [
+                {
+                    "name": "sonda-0.2.0-x86_64-unknown-linux-gnu.tar.gz",
+                    "browser_download_url": "https://example.com/sonda-0.2.0-linux-x86_64.tar.gz"
+                }
+            ]
+        });
+        assert!(select_checksum_asset(&json, "x86_64-unknown-linux-gnu").is_none());
     }
 }

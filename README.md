@@ -41,12 +41,15 @@ installed) is skipped silently.
 ## Updating
 
 ```console
-$ sonda update
+$ sonda update            # pretty-printed JSON outcome
+$ sonda update --compact  # single-line JSON outcome
+$ sonda update --check    # check if an update is available without installing
 ```
 
-Compares the running version against the [latest GitHub
-release](https://github.com/eddraz/sonda/releases/latest): downloads the
-tarball for your platform, and atomically replaces the running binary
+Compares the running version against the latest GitHub release, downloads the
+matching platform tarball from
+`https://github.com/eddraz/sonda/releases/latest`, verifies its SHA-256 checksum
+when available, and replaces the running binary atomically
 (keeping its permissions). Reports the outcome as JSON; `--compact` for a
 single line. Exits 0 on success and on "already up to date"; a fatal failure
 prints an error JSON and exits 1.
@@ -67,7 +70,7 @@ Targets: `x86_64-unknown-linux-gnu`, `aarch64-unknown-linux-gnu`,
 | Disks (top-level) | `lsblk -l` | `lsblk` | empty array |
 | Network links | `ip -br link` | `ip` | empty array |
 | rfkill state | `rfkill list` | `rfkill` | empty array |
-| Board/BIOS (DMI) | `dmidecode -s` | `dmidecode` + **root** | nulls |
+| Board/BIOS (DMI) | `/sys/class/dmi/id`, `dmidecode -s` | — (or root for fallback) | nulls |
 
 All commands run through `bash -c` with `LC_ALL=C` pinned where labels are
 parsed. Missing binaries are skipped silently; a failing command is recorded
