@@ -15,13 +15,14 @@ sonda (main.rs)
        ├─ probe::storage lsblk -l
        ├─ probe::net     ip -br link
        ├─ probe::rfkill  rfkill list
-       ├─ probe::dmi     dmidecode -s (nullable)
+       ├─ probe::dmi     /sys/class/dmi/id (sysfs) · dmidecode -s (fallback)
        └─ model::Output  → stdout (JSON | --compact | --summary)
 ```
 
 The scan never fails the process: missing information stays `null`, probe
 failures land in `errors[]` (see [contract.md](contract.md) for the exact
-policy).
+policy). Probes run concurrently via `std::thread::scope` (zero external
+runtime dependencies) and append errors in contract order.
 
 ## Hard conventions
 
@@ -29,7 +30,7 @@ policy).
 |------------|-----|
 | Every external command runs through `Command::new("bash")` + `-c` | Family requirement shared with pkgq: one single execution path, no bypassing. |
 | Locale-sensitive commands run as `LC_ALL=C <cmd>` | `lscpu` translates its labels («Socket(s)» on a Spanish system); text parsing depends on the exact English keys. |
-| `/proc` and `/etc` files are read directly with `std::fs` | They are files, not commands; going through bash would only add failure modes. |
+| `/proc`, `/sys`, and `/etc` files are read directly with `std::fs` | They are files, not commands; going through bash would only add failure modes. |
 | Parsers are pure functions over `&str` | They are tested against embedded fixtures and never spawn processes in tests. |
 | A probe never panics | Unreadable file → null; missing binary → silent skip; failing command → `ProbeError` in `errors[]`. |
 
@@ -38,19 +39,19 @@ policy).
 | Module | Responsibility |
 |--------|----------------|
 | `main.rs` | CLI wiring, output modes (pretty / `--compact` / `--summary`), exit codes. |
-| `cli.rs` | clap definition: `--compact`, `--summary`. |
+| `cli.rs` | clap definition: `--compact`, `--summary`, `update` (`--check`). |
 | `model.rs` | Contract v1 types + field-order contract test. |
 | `shell.rs` | `bash -c` adapter: `run`, `which`, `quote`, `ShellError`. |
 | `timefmt.rs` | std-only RFC3339 UTC (civil-from-days), no chrono. |
-| `run.rs` | Orchestration: calls every probe, assembles `Output`. |
-| `summary.rs` | Human renderer for `--summary` (vendor short names, iGPU heuristic, human sizes). |
+| `run.rs` | Orchestration: calls probes concurrently via `std::thread::scope`, assembles `Output`. |
+| `summary.rs` | Human renderer for `--summary` (vendor short names, multi-GPU support, iGPU heuristic, human sizes). |
 | `probe/core.rs` | os-release, `uname -snrmo`, lscpu, meminfo, zram swaps. |
 | `probe/pci.rs` | PCI devices with kernel driver state. |
 | `probe/usb.rs` | USB devices. |
 | `probe/storage.rs` | Block devices (top-level disks). |
 | `probe/net.rs` | Network links. |
 | `probe/rfkill.rs` | Radio kill switches. |
-| `probe/dmi.rs` | Board/BIOS scalar queries (root-only). |
+| `probe/dmi.rs` | Board/BIOS queries via `/sys/class/dmi/id` (sysfs unprivileged) with `dmidecode` fallback. |
 
 ## Why lspci uses two sources
 

@@ -9,12 +9,28 @@ follow [Semantic Versioning](https://semver.org/).
 ### Added
 
 - `sonda update`: self-update from the latest GitHub Release. Compares
-  versions, downloads the platform tarball through `bash -c` (curl) and
+  versions, downloads the platform tarball through `bash -c` (curl), validates
+  its SHA-256 checksum when available, runs a sanity pre-flight check, and
   atomically replaces the running binary. JSON report; exits 0 on success
   and on "already up to date", 1 on fatal errors. `--summary` is rejected
   with exit 2 when combined with `update`.
-- CLI now accepts optional subcommands without breaking the bare scan:
+- `sonda update --check`: checks if an update is available against GitHub
+  releases without downloading or installing.
+- CLI accepts optional subcommands without breaking the bare scan:
   `sonda` (scan), `sonda update`.
+- Multi-GPU support in `--summary`: all GPUs detected in `pci_devices` are
+  rendered with iGPU / dGPU tagging instead of ignoring secondary GPUs.
+- Unprivileged DMI discovery: reads `/sys/class/dmi/id` via `std::fs` without
+  requiring root or `dmidecode`, falling back to `dmidecode` when sysfs is
+  absent.
+
+### Changed
+
+- Scan performance: independent probes run concurrently in `std::thread::scope`
+  (std-only, zero dependencies), reducing scan latency from ~100 ms to ~30-70 ms
+  while preserving the exact frozen JSON contract v1 field order and deterministic
+  error sequence.
+- Release workflow: publishes `.sha256` checksum files alongside tarball assets.
 
 ## [0.1.0] - 2026-09-21
 

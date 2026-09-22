@@ -27,12 +27,15 @@ pub enum Command {
         /// Emit single-line JSON instead of pretty-printed.
         #[arg(long)]
         compact: bool,
+        /// Check for updates without downloading or installing.
+        #[arg(long)]
+        check: bool,
     },
 }
 
 impl Cli {
     /// Whether compact (single-line JSON) output was requested at any level.
     pub fn wants_compact(&self) -> bool {
-        self.compact || matches!(&self.command, Some(Command::Update { compact }) if *compact)
+        self.compact || matches!(&self.command, Some(Command::Update { compact, .. }) if *compact)
     }
 }

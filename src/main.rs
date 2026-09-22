@@ -18,12 +18,17 @@ fn main() -> ExitCode {
     let args = cli::Cli::parse();
     let compact = args.wants_compact();
 
-    if let Some(cli::Command::Update { .. }) = args.command {
+    if let Some(cli::Command::Update { check, .. }) = args.command {
         if args.summary {
             eprintln!("sonda: --summary is not valid with update");
             return ExitCode::from(2);
         }
-        return match update::run_update() {
+        let result = if check {
+            update::check_update()
+        } else {
+            update::run_update()
+        };
+        return match result {
             Ok(report) => print_json(&report, compact),
             Err(report) => {
                 print_json(&report, compact);

@@ -60,15 +60,23 @@ jobs:
         env:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: ${{ matrix.cross_linker }}
 
-      - name: Package (tar.gz)
+      - name: Package (tar.gz + sha256)
         run: |
           cd "target/${{ matrix.target }}/release"
           tar czf "../../../sonda-$VERSION-${{ matrix.target }}.tar.gz" sonda
+          cd ../../..
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum "sonda-$VERSION-${{ matrix.target }}.tar.gz" > "sonda-$VERSION-${{ matrix.target }}.tar.gz.sha256"
+          else
+            shasum -a 256 "sonda-$VERSION-${{ matrix.target }}.tar.gz" > "sonda-$VERSION-${{ matrix.target }}.tar.gz.sha256"
+          fi
 
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           # `with:` only expands ${{ }} expressions, never $VAR shell env.
-          files: sonda-${{ env.VERSION }}-${{ matrix.target }}.tar.gz
+          files: |
+            sonda-${{ env.VERSION }}-${{ matrix.target }}.tar.gz
+            sonda-${{ env.VERSION }}-${{ matrix.target }}.tar.gz.sha256
           # On workflow_dispatch GITHUB_REF_NAME is the branch, not the tag.
           tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
